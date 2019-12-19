@@ -1,0 +1,14 @@
+# Mac
+.DS_Store
+
+# JetBrains
+.idea/
+
+# vim
+*~
+
+# Python
+*.pyc
+
+# virtualenv
+venv/
