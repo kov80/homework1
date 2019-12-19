@@ -2,6 +2,7 @@ import sys
 import argparse
 
 from parsers.parsers import SiteParser
+from storages.storage import Storage
 
 
 def get_args():
@@ -18,5 +19,5 @@ def get_args():
 
 
 if __name__ == '__main__':
-    SiteParser.get_parser(**vars(get_args().parse_args())).parse()
+    SiteParser.get_parser(Storage(), **vars(get_args().parse_args())).parse()
 

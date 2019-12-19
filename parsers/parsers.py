@@ -1,10 +1,12 @@
 import sys
 import requests
 import re
-import time
+import logging
 
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, unquote
+
+logger = logging.getLogger(__name__)
 
 
 class SiteParser(object):
@@ -13,27 +15,31 @@ class SiteParser(object):
                              '(KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36'}
 
     @classmethod
-    def get_parser(cls, **kwargs):
+    def get_parser(cls, storage, **kwargs):
         engine = kwargs.pop('engine', 'google').lower().title()+'Parser'
-        parcer_class = getattr(sys.modules[__name__], engine)
-        return parcer_class(**kwargs)
+        parser_class = getattr(sys.modules[__name__], engine)
+        return parser_class(storage, **kwargs)
 
-    def __init__(self, url='', text='', limit=10, depth=0):
+    def __init__(self, storage, url='', text='', limit=10, depth=0):
         url = url or self.SITE
 
+        self._storage = storage
         self._soup = None
-
-        self.uri = urlparse(url)
+                   
         self.text = text
         self.limit = limit
         self.depth = depth
 
         params = self.get_request_params()
         try:
+            self.uri = urlparse(url)
+            if not (self.uri.scheme and self.uri.netloc):
+                raise Exception(f'Invalid url: {url}')
+            
             response_text = requests.get(url, params, headers=self.HEADERS).text
             self._soup = BeautifulSoup(response_text, features="html.parser")
         except Exception as e:
-            print('!!! %s' % e)
+            logger.warning(f'Site parsing error: {e}')
 
     def get_request_params(self):
         return {}
@@ -53,12 +59,12 @@ class SiteParser(object):
         if urls:
             for i, url in enumerate(urls):
                 text, ref = self.parse_url(url)
-                print('%s%s: %s\n%s%s' % ('\t' * t, i + 1, text, '\t' * (t + 1), ref))
+                self._storage.save(i, t, text, ref)
 
                 if self.depth > 0:
-                    SiteParser(ref, limit=self.limit, depth=self.depth - 1).parse(t + 1)
+                    SiteParser(self._storage, ref, limit=self.limit, depth=self.depth - 1).parse(t + 1)
         elif self._soup:
-            print('%s! Nothing found. Captcha may be required !' % ('\t'*t))
+            logger.error('{t}Nothing found. Captcha may be required!'.format(t='\t'*t))
 
 
 class YandexParser(SiteParser):
